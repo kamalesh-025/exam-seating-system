@@ -13,6 +13,8 @@ export default function AttendanceScanner() {
   const [cameraActive, setCameraActive] = useState(false);
   const scannerRef = useRef(null);
 
+  const lastScannedRef = useRef({ code: '', time: 0 });
+
   const startCamera = async () => {
     const html5Qrcode = new Html5Qrcode('qr-reader');
     scannerRef.current = html5Qrcode;
@@ -22,14 +24,21 @@ export default function AttendanceScanner() {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         (decodedText) => {
+          const now = Date.now();
+          // Prevent double-scanning same code within 5 seconds
+          if (decodedText === lastScannedRef.current.code && now - lastScannedRef.current.time < 5000) {
+            return;
+          }
+          lastScannedRef.current = { code: decodedText, time: now };
+          
           setRegNo(decodedText);
-          stopCamera();
-          toast.success(`QR Scanned: ${decodedText}`);
+          handleScan(decodedText); // Automatically mark attendance
         },
-        () => {}
+        () => {} // Suppress noise
       );
       setCameraActive(true);
     } catch (err) {
+      console.error('Camera error:', err);
       toast.error('Camera access denied or not available');
     }
   };
@@ -39,7 +48,9 @@ export default function AttendanceScanner() {
       try {
         await scannerRef.current.stop();
         await scannerRef.current.clear();
-      } catch {}
+      } catch (err) {
+        console.warn('Failed to stop camera:', err);
+      }
     }
     setCameraActive(false);
   };
@@ -54,15 +65,28 @@ export default function AttendanceScanner() {
       })
       .catch(e => console.error('Failed to fetch attendance history', e));
 
-    return () => { stopCamera(); };
+    // Auto-start camera after a short delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      startCamera();
+    }, 500);
+
+    return () => { 
+      clearTimeout(timer);
+      stopCamera(); 
+    };
   }, []);
 
-  const handleScan = async () => {
-    if (!regNo.trim()) { toast.error('Enter or scan register number'); return; }
+  const handleScan = async (scannedRegNo) => {
+    const targetRegNo = typeof scannedRegNo === 'string' ? scannedRegNo : regNo;
+    if (!targetRegNo.trim()) { 
+      if (!scannedRegNo) toast.error('Enter or scan register number'); 
+      return; 
+    }
+    
     setLoading(true);
     try {
       const res = await api.post('/attendance/scan', {
-        registerNumber: regNo.trim(),
+        registerNumber: targetRegNo.trim(),
         answerSheetNumber: answerSheet || 'N/A',
       });
       setLastScanned(res.data);
@@ -71,7 +95,14 @@ export default function AttendanceScanner() {
       setAnswerSheet('');
       toast.success(`✅ ${res.data.studentName} marked present`);
     } catch (e) {
-      toast.error(e.response?.data?.error || 'Scan failed');
+      const errorMsg = e.response?.data?.error || 'Scan failed';
+      toast.error(errorMsg);
+      // Reset ref time on error so they can try again immediately if it was a real error
+      if (errorMsg.includes('already marked')) {
+        // Keep the cooldown
+      } else {
+        lastScannedRef.current.time = 0;
+      }
     } finally {
       setLoading(false);
     }
@@ -97,15 +128,12 @@ export default function AttendanceScanner() {
             display: cameraActive ? 'block' : 'none',
           }} />
 
-          {/* Camera Buttons */}
           <div style={styles.cameraRow}>
-            {!cameraActive ? (
-              <button style={styles.cameraBtn} onClick={startCamera}>
-                📷 Open Camera to Scan QR
-              </button>
+            {cameraActive ? (
+              <div style={styles.scanStatus}>🟢 Scanner Active - Point at QR Code</div>
             ) : (
-              <button style={{ ...styles.cameraBtn, background: '#ef4444' }} onClick={stopCamera}>
-                ⛔ Stop Camera
+              <button style={styles.cameraBtn} onClick={startCamera}>
+                📷 Start QR Scanner
               </button>
             )}
           </div>
@@ -184,11 +212,11 @@ export default function AttendanceScanner() {
         <h3 style={styles.instrTitle}>How It Works</h3>
         <div style={styles.instrGrid}>
           {[
-            { step: '1', text: 'Click "Open Camera to Scan QR" button' },
-            { step: '2', text: 'Point camera at student college ID card QR code' },
-            { step: '3', text: 'Register number auto-fills instantly' },
-            { step: '4', text: 'Enter answer sheet number (optional)' },
-            { step: '5', text: 'Click Mark Present — attendance logged!' },
+            { step: '1', text: 'Click "Start QR Scanner" button' },
+            { step: '2', text: 'Point camera at student ID card QR code' },
+            { step: '3', text: 'System detects QR and auto-marks attendance' },
+            { step: '4', text: 'Check the Live Log for instant confirmation' },
+            { step: '5', text: 'Ready for next student instantly!' },
           ].map(i => (
             <div key={i.step} style={styles.instrItem}>
               <div style={styles.stepBadge}>{i.step}</div>
@@ -215,6 +243,16 @@ const styles = {
     color: 'white', border: 'none',
     borderRadius: '12px', fontSize: '15px',
     fontWeight: '700', cursor: 'pointer',
+  },
+  scanStatus: {
+    padding: '12px',
+    background: '#dcfce7',
+    color: '#166534',
+    borderRadius: '10px',
+    textAlign: 'center',
+    fontSize: '14px',
+    fontWeight: '700',
+    border: '1px solid #86efac',
   },
   divider: { textAlign: 'center', color: '#94a3b8', fontSize: '13px', margin: '16px 0' },
   input: {

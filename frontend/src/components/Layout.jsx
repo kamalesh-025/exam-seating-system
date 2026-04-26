@@ -68,7 +68,7 @@ export default function Layout() {
 const styles = {
   container: {
     display: 'flex',
-    height: '100vh',
+    minHeight: '100vh',
     background: '#f0f2f5',
     fontFamily: "'DM Sans', sans-serif",
   },
@@ -79,6 +79,10 @@ const styles = {
     flexDirection: 'column',
     padding: '24px 16px',
     boxShadow: '4px 0 20px rgba(0,0,0,0.15)',
+    height: '100vh',
+    position: 'fixed',
+    left: 0,
+    top: 0,
   },
   logo: {
     display: 'flex',
@@ -121,7 +125,7 @@ const styles = {
     color: '#3b82f6',
     borderLeft: '3px solid #3b82f6',
   },
-  main: { flex: 1, overflowY: 'auto', padding: '32px' },
+  main: { flex: 1, marginLeft: '260px', padding: '32px', overflowY: 'auto' },
   logoutBtn: {
     display: 'flex',
     alignItems: 'center',

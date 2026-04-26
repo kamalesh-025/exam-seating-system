@@ -1,10 +1,17 @@
 package com.rit.examseating.service;
  
-import com.rit.examseating.entity.*;
-import com.rit.examseating.repository.*;
+import com.rit.examseating.entity.Attendance;
+import com.rit.examseating.entity.SeatingArrangement;
+import com.rit.examseating.repository.AttendanceRepository;
+import com.rit.examseating.repository.SeatingArrangementRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.time.ZoneId;
  
 @Service
 @RequiredArgsConstructor
@@ -63,7 +70,12 @@ public class AttendanceService {
             map.put("registerNumber", a.getStudent().getRegisterNumber());
             map.put("room", a.getSeating().getRoom().getRoomNumber());
             map.put("seatNumber", a.getSeating().getSeatNumber());
-            map.put("time", new java.text.SimpleDateFormat("hh:mm a").format(a.getScannedAt() != null ? java.util.Date.from(a.getScannedAt().atZone(java.time.ZoneId.systemDefault()).toInstant()) : new java.util.Date()));
+            String timeStr = "N/A";
+            if (a.getScannedAt() != null) {
+                Date date = Date.from(a.getScannedAt().atZone(ZoneId.systemDefault()).toInstant());
+                timeStr = new SimpleDateFormat("hh:mm a").format(date);
+            }
+            map.put("time", timeStr);
             return map;
         }).toList();
     }
