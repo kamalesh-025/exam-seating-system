@@ -30,11 +30,11 @@ export default function AttendanceScanner() {
             return;
           }
           lastScannedRef.current = { code: decodedText, time: now };
-          
+
           setRegNo(decodedText);
           handleScan(decodedText); // Automatically mark attendance
         },
-        () => {} // Suppress noise
+        () => { } // Suppress noise
       );
       setCameraActive(true);
     } catch (err) {
@@ -70,19 +70,19 @@ export default function AttendanceScanner() {
       startCamera();
     }, 500);
 
-    return () => { 
+    return () => {
       clearTimeout(timer);
-      stopCamera(); 
+      stopCamera();
     };
   }, []);
 
   const handleScan = async (scannedRegNo) => {
     const targetRegNo = typeof scannedRegNo === 'string' ? scannedRegNo : regNo;
-    if (!targetRegNo.trim()) { 
-      if (!scannedRegNo) toast.error('Enter or scan register number'); 
-      return; 
+    if (!targetRegNo.trim()) {
+      if (!scannedRegNo) toast.error('Enter or scan register number');
+      return;
     }
-    
+
     setLoading(true);
     try {
       const res = await api.post('/attendance/scan', {
@@ -150,7 +150,7 @@ export default function AttendanceScanner() {
           />
           <input
             style={styles.input}
-            placeholder="Answer Sheet Number (optional)"
+            placeholder="Answer Sheet Number"
             value={answerSheet}
             onChange={e => setAnswerSheet(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleScan()}
