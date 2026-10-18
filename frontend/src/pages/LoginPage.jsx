@@ -25,8 +25,14 @@ export default function LoginPage() {
       await login(username, password);
       toast.success('Welcome back');
       navigate('/');
-    } catch {
-      toast.error('Invalid username or password');
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Invalid username or password');
+      } else if (!error.response) {
+        toast.error('Cannot reach the login service. Check that the backend is running and configured for this deployment.');
+      } else {
+        toast.error(`Login service error (${error.response.status}). Check your deployment configuration.`);
+      }
     } finally {
       setLoading(false);
     }
