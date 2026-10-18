@@ -1,7 +1,16 @@
 // src/pages/GenerateSeating.jsx
 import { useState } from 'react';
 import api from '../api/axios';
+import { MdCheck, MdDownload } from 'react-icons/md';
 import toast from 'react-hot-toast';
+
+const FEATURES = [
+  'Department mixing to prevent malpractice',
+  'Per-room capacity enforced',
+  'Only enabled rooms are used',
+  'Duplicate student detection',
+  'Even distribution across blocks A, B and C',
+];
 
 export default function GenerateSeating() {
   const [examDate, setExamDate] = useState('');
@@ -14,7 +23,7 @@ export default function GenerateSeating() {
     try {
       const res = await api.post('/seating/generate', { examDate });
       setResult(res.data);
-      toast.success('Seating generated successfully!');
+      toast.success('Seating generated');
     } catch (e) {
       toast.error(e.response?.data?.error || 'Generation failed');
     } finally {
@@ -24,9 +33,7 @@ export default function GenerateSeating() {
 
   const downloadPdf = async () => {
     try {
-      const response = await api.get(`/seating/pdf/${examDate}`, {
-        responseType: 'blob',
-      });
+      const response = await api.get(`/seating/pdf/${examDate}`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -34,87 +41,70 @@ export default function GenerateSeating() {
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-    } catch (e) {
+      window.URL.revokeObjectURL(url);
+    } catch {
       toast.error('Failed to download PDF');
     }
   };
 
   return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h1 style={styles.title}>Generate Seating</h1>
-        <p style={styles.subtitle}>Auto-allocate seats with department mixing and anti-malpractice constraints</p>
+    <div className="page page-narrow rise">
+      <div className="page-head">
+        <div>
+          <h1 className="page-title">Generate seating</h1>
+          <p className="page-sub">
+            Auto-allocate seats with department mixing and anti-malpractice constraints.
+          </p>
+        </div>
       </div>
 
-      <div style={styles.card}>
-        <h3 style={styles.cardTitle}>🗓️ Select Exam Date</h3>
-        <input
-          type="date"
-          style={styles.dateInput}
-          value={examDate}
-          onChange={e => setExamDate(e.target.value)}
-        />
-
-        <div style={styles.features}>
-          {[
-            '✅ Department mixing to prevent malpractice',
-            '✅ Max 30 students per room enforced',
-            '✅ Only enabled rooms are used',
-            '✅ Duplicate student detection',
-            '✅ Even distribution across blocks A, B, C',
-          ].map(f => <div key={f} style={styles.feature}>{f}</div>)}
+      <div className="card mb-24">
+        <h3 className="card-title">Exam date</h3>
+        <div className="field" style={{ maxWidth: 260 }}>
+          <input
+            type="date"
+            className="input"
+            value={examDate}
+            onChange={e => setExamDate(e.target.value)}
+          />
         </div>
 
-        <button
-          style={{ ...styles.genBtn, opacity: loading ? 0.7 : 1 }}
-          onClick={generate}
-          disabled={loading}
-        >
-          {loading ? '⏳ Generating...' : '🪑 Generate Seating Arrangement'}
+        <div className="feature-list mt-24">
+          {FEATURES.map((f, i) => (
+            <div key={f} className="feature-item rise" style={{ '--d': `${120 + i * 45}ms` }}>
+              <MdCheck size={17} color="var(--ok)" />
+              <span>{f}</span>
+            </div>
+          ))}
+        </div>
+
+        <button className="btn btn-primary" onClick={generate} disabled={loading}>
+          {loading ? 'Generating…' : 'Generate seating'}
         </button>
       </div>
 
       {result && (
-        <div style={styles.resultCard}>
-          <h3 style={styles.cardTitle}>✅ Generation Complete — {result.examDate}</h3>
-          <div style={styles.resultGrid}>
-            {[
-              { label: 'Total Students', value: result.totalStudents, icon: '👥', color: '#3b82f6' },
-              { label: 'Rooms Used', value: result.totalRoomsUsed, icon: '🏛️', color: '#8b5cf6' },
-              { label: 'Seats Assigned', value: result.arrangements, icon: '🪑', color: '#10b981' },
-            ].map(r => (
-              <div key={r.label} style={{ ...styles.resultItem, borderColor: r.color + '40' }}>
-                <div style={styles.resultIcon}>{r.icon}</div>
-                <div style={{ ...styles.resultNum, color: r.color }}>{r.value}</div>
-                <div style={styles.resultLabel}>{r.label}</div>
-              </div>
-            ))}
+        <div className="card">
+          <h3 className="card-title">Seating generated · {result.examDate}</h3>
+          <div className="grid grid-3 mb-24">
+            <div className="stat">
+              <div className="stat-value">{result.totalStudents}</div>
+              <div className="stat-label">Total students</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value">{result.totalRoomsUsed}</div>
+              <div className="stat-label">Rooms used</div>
+            </div>
+            <div className="stat">
+              <div className="stat-value">{result.arrangements}</div>
+              <div className="stat-label">Seats assigned</div>
+            </div>
           </div>
-          <button style={styles.pdfBtn} onClick={downloadPdf}>
-            📥 Download PDF Seating Report
+          <button className="btn btn-dark" onClick={downloadPdf}>
+            <MdDownload size={18} /> Download PDF report
           </button>
         </div>
       )}
     </div>
   );
 }
-
-const styles = {
-  page: { fontFamily: "'DM Sans', sans-serif", maxWidth: '700px' },
-  header: { marginBottom: '32px' },
-  title: { fontSize: '28px', fontWeight: '800', color: '#0f172a', margin: 0 },
-  subtitle: { color: '#64748b', fontSize: '14px', marginTop: '4px' },
-  card: { background: 'white', borderRadius: '16px', padding: '32px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', marginBottom: '24px' },
-  cardTitle: { fontSize: '16px', fontWeight: '700', color: '#0f172a', marginBottom: '16px', marginTop: 0 },
-  dateInput: { padding: '12px 16px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '15px', marginBottom: '24px', width: '240px' },
-  features: { display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' },
-  feature: { fontSize: '14px', color: '#374151', padding: '8px 12px', background: '#f8fafc', borderRadius: '8px' },
-  genBtn: { padding: '15px 32px', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' },
-  resultCard: { background: 'white', borderRadius: '16px', padding: '32px', boxShadow: '0 2px 8px rgba(0,0,0,0.06)' },
-  resultGrid: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', marginBottom: '24px' },
-  resultItem: { background: '#f8fafc', borderRadius: '12px', padding: '24px', textAlign: 'center', border: '2px solid #e2e8f0' },
-  resultIcon: { fontSize: '28px', marginBottom: '8px' },
-  resultNum: { fontSize: '36px', fontWeight: '800' },
-  resultLabel: { fontSize: '13px', color: '#64748b', marginTop: '6px' },
-  pdfBtn: { padding: '14px 28px', background: '#0f172a', color: 'white', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' },
-};

@@ -3,6 +3,7 @@ package com.rit.examseating.service;
 import com.rit.examseating.entity.Room;
 import com.rit.examseating.entity.SeatingArrangement;
 import com.rit.examseating.entity.Student;
+import com.rit.examseating.repository.AttendanceRepository;
 import com.rit.examseating.repository.RoomRepository;
 import com.rit.examseating.repository.SeatingArrangementRepository;
 import com.rit.examseating.repository.StudentRepository;
@@ -25,9 +26,12 @@ public class SeatingService {
     private final StudentRepository studentRepository;
     private final RoomRepository roomRepository;
     private final SeatingArrangementRepository seatingRepo;
- 
+    private final AttendanceRepository attendanceRepo;
+
     @Transactional
     public Map<String, Object> generateSeating(LocalDate examDate) {
+        // Attendance references seatings, so clear it first to avoid FK violations.
+        attendanceRepo.deleteByExamDate(examDate);
         // Clear existing arrangements for this date
         seatingRepo.deleteByExamDate(examDate);
  
@@ -37,14 +41,18 @@ public class SeatingService {
             throw new RuntimeException("No students found for date: " + examDate);
         }
  
-        // Get available rooms
-        List<Room> availableRooms = roomRepository.findByIsAvailableTrue();
+        // Get available rooms in a deterministic order (block, floor, room)
+        List<Room> availableRooms = new ArrayList<>(roomRepository.findByIsAvailableTrue());
         if (availableRooms.isEmpty()) {
             throw new RuntimeException("No rooms available");
         }
- 
-        // Check capacity
-        int totalCapacity = availableRooms.size() * 30;
+        availableRooms.sort(java.util.Comparator
+            .comparing((Room r) -> r.getBlock().getBlockName())
+            .thenComparingInt(Room::getFloorNumber)
+            .thenComparing(Room::getRoomNumber));
+
+        // Check capacity against the real per-room capacity
+        int totalCapacity = availableRooms.stream().mapToInt(Room::getCapacity).sum();
         if (students.size() > totalCapacity) {
             throw new RuntimeException("Not enough room capacity. Need: " + students.size() + ", Have: " + totalCapacity);
         }
@@ -59,10 +67,12 @@ public class SeatingService {
         // Assign seats room by room
         List<SeatingArrangement> arrangements = new ArrayList<>();
         int studentIndex = 0;
- 
+        int roomsUsed = 0;
+
         for (Room room : availableRooms) {
             if (studentIndex >= mixedStudents.size()) break;
- 
+
+            int roomStartIndex = studentIndex;
             String[] columns = {"A", "B", "C", "D", "E", "F"};
             int numRows = (int) Math.ceil((double) room.getCapacity() / columns.length);
  
@@ -82,13 +92,17 @@ public class SeatingService {
                     studentIndex++;
                 }
             }
+
+            if (studentIndex > roomStartIndex) {
+                roomsUsed++;
+            }
         }
- 
+
         seatingRepo.saveAll(arrangements);
- 
+
         Map<String, Object> result = new HashMap<>();
         result.put("totalStudents", students.size());
-        result.put("totalRoomsUsed", (int) Math.ceil((double) students.size() / 30));
+        result.put("totalRoomsUsed", roomsUsed);
         result.put("arrangements", arrangements.size());
         result.put("examDate", examDate.toString());
         return result;

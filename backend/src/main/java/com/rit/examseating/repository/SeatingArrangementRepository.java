@@ -20,6 +20,11 @@ public interface SeatingArrangementRepository extends JpaRepository<SeatingArran
  
     Optional<SeatingArrangement> findByStudent_RegisterNumber(String registerNumber);
     Optional<SeatingArrangement> findTopByStudent_RegisterNumberOrderByExamDateDesc(String registerNumber);
- 
+
+    Optional<SeatingArrangement> findByStudent_RegisterNumberAndExamDate(String registerNumber, LocalDate examDate);
+
     List<SeatingArrangement> findByRoom_Block_IdAndExamDate(Long blockId, LocalDate examDate);
+
+    @Query("SELECT DISTINCT s.examDate FROM SeatingArrangement s ORDER BY s.examDate DESC")
+    List<LocalDate> findDistinctExamDates();
 }

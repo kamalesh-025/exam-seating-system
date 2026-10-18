@@ -86,9 +86,10 @@ CREATE TABLE audit_logs (
 -- SEED DATA
 -- ============================================
 
--- Default admin (password: admin123 - bcrypt hashed)
+-- Default admin (username: admin  /  password: admin123  - bcrypt hashed)
+-- On startup the backend also seeds/repairs this account, so login always works.
 INSERT INTO admins (username, password, full_name, email) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6mxOu', 'Exam Cell Admin', 'examcell@rit.edu');
+('admin', '$2b$10$QGhEWvOd.Y6BMA39.gvAcupLS8ivilWUyrpC.p1uy9MjIy35JhX.K', 'Exam Cell Admin', 'examcell@rit.edu');
 
 -- Blocks
 INSERT INTO blocks (block_name, total_floors) VALUES
