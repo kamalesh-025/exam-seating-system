@@ -18,7 +18,7 @@ FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Copy the generated JAR
-COPY --from=build /app/target/exam-seating-1.0.0..jar app.jar
+COPY --from=build /app/target/exam-seating-1.0.0.jar app.jar
 
 # Expose the application port
 EXPOSE 8080
