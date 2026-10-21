@@ -10,7 +10,7 @@ COPY pom.xml .
 COPY src ./src
 
 # Build the application
-RUN mvn -B -DskipTests package
+RUN mvn -B -q -DskipTests package
 
 # Stage 2: Run the application
 FROM eclipse-temurin:17-jre
@@ -20,8 +20,15 @@ WORKDIR /app
 # Copy the generated JAR
 COPY --from=build /app/target/exam-seating-1.0.0.jar app.jar
 
-# Expose the application port
-EXPOSE 8080
+# Render assigns the port through the PORT env var (10000 by default).
+EXPOSE 10000
+
+ENV TZ=UTC
 
 # Start the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", \
+  "-XX:MaxRAMPercentage=70.0", \
+  "-XX:MaxMetaspaceSize=160m", \
+  "-XX:+UseSerialGC", \
+  "-Djava.awt.headless=true", \
+  "-jar", "app.jar"]
