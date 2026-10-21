@@ -33,4 +33,5 @@ yarn-error.log*
 # Misc
 temp/
 logs/
+run.log
 .taste-skill/
